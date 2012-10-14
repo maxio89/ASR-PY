@@ -1,0 +1,189 @@
+#!/usr/bin/python
+# Voice control of industrial robot Kawasaki via Raspberry Pi
+# author: Piotr Kozlowski
+# created: September 2012
+
+
+import subprocess
+import pexpect
+import time
+import re
+import string
+
+#global
+stage = 0
+begin = 0
+pause = 0
+in_text = "sad"
+
+
+def play_wav(name):
+	try: 
+		child = pexpect.spawn ('aplay wav/' + name)
+		child.expect("play")
+	except pexpect.EOF:
+	      	pass
+	child.close
+
+def play_game1(in_text):
+	#Wolf and sheep (Fox and Hounds)
+	
+	words = string.split(in_text, '\n')
+	print(words[3])
+	raw_input("Press Enter")
+	
+def process_text(in_text):
+	global stage
+	global pause
+	global begin
+	
+	print "-------- PROCESS ----------- (stage ", stage, ")"
+	
+	match_se = re.search("ZATRZYMAJ", in_text)
+	if match_se and begin == 1:
+		pause = 1
+		print "ZATRZYMANO"
+		play_wav("pause.wav")
+		
+	match_se = re.search(" START ", in_text)
+	if match_se:
+		if pause != 1:
+			if begin == 0:
+				stage = 1
+				print "START"
+				play_wav("start.wav")
+		else:
+			pause = 0
+			play_wav("pause.wav")
+	
+	if pause == 0:
+		
+		match_se = re.search("WITAJ", in_text)
+		match_se = re.search("JESTEM", in_text)
+	    	if match_se:
+			stage = 2
+			print "WITAJ"
+			play_wav("witaj.wav")
+			
+		match_se = re.search("ZAGRAJMY", in_text)
+		if match_se:
+			stage = 3
+			print "ZAGRAJMY"
+			
+		match_se = re.search("ROZPOCZNIJ", in_text)
+	    	if match_se:
+			stage = 4
+			begin = 1
+			print "ROZPOCZNIJ"
+			
+	    	match_se = re.search("JAROZPOCZYNAM", in_text)
+	    	if match_se:
+			stage = 4
+			begin = 1
+			print "JAROZPOCZYNAM"
+		
+		match_se = re.search(" NA ", in_text)
+	    	if match_se and begin == 1:
+			stage = 5
+			begin = 1
+			print "NA"
+			play_game1(in_text)
+			
+		match_se = re.search("TWOJRUCH", in_text)
+	    	if match_se:
+			stage = 4
+			begin = 1
+			print "TWOJRUCH"
+			
+		match_se = re.search("COFNIJ", in_text)
+	    	if match_se:
+			back = 1
+			stage = 4
+			print "COFNIJ"
+			play_wav("przykromi.wav")
+			
+		match_se = re.search("KONIEC", in_text)
+	    	if match_se:
+	    		print "KONIEC"
+			if begin == 1:
+				begin = 0
+				play_wav("tobyldopieropoczatek.wav")
+				play_wav("end.wav")
+		
+		
+	
+
+if __name__ == "__main__":
+
+	
+	while True:	
+		try:
+			if stage == 1:
+				min_length = '0.2'
+				path = '/home/pi/HTK-ASR-WILKiOWCE-ICAO/HTK-ASR-WILKiOWCE-witaj/'
+				p1 = subprocess.Popen (['rec', '-c', '1', '-p'], stdout=subprocess.PIPE)
+				p2 = subprocess.Popen (['sh', 'sox.sh', path, min_length], stdin=p1.stdout)
+				p2.wait()
+				p1.kill()
+				in_text = subprocess.check_output (['sh', 'recognize_live.sh', path])
+			elif stage == 2:
+				min_length = '0.2'
+				path = '/home/pi/HTK-ASR-WILKiOWCE-ICAO/HTK-ASR-WILKiOWCE-zagrajmy/'
+				p1 = subprocess.Popen (['rec', '-c', '1', '-p'], stdout=subprocess.PIPE)
+				p2 = subprocess.Popen (['sh', 'sox.sh', path, min_length], stdin=p1.stdout)
+				p2.wait()
+				p1.kill()
+				in_text = subprocess.check_output (['sh', 'recognize_live.sh', path])
+			elif stage == 3:
+				min_length = '0.2'
+				path = '/home/pi/HTK-ASR-WILKiOWCE-ICAO/HTK-ASR-WILKiOWCE-rozpocznij/'
+				p1 = subprocess.Popen (['rec', '-c', '1', '-p'], stdout=subprocess.PIPE)
+				p2 = subprocess.Popen (['sh', 'sox.sh', path, min_length], stdin=p1.stdout)
+				p2.wait()
+				p1.kill()
+				in_text = subprocess.check_output (['sh', 'recognize_live.sh', path])
+			elif stage == 4:
+				min_length = '0.2'
+				path = '/home/pi/HTK-ASR-WILKiOWCE-ICAO/'
+				p1 = subprocess.Popen (['rec', '-c', '1', '-p'], stdout=subprocess.PIPE)
+				p2 = subprocess.Popen (['sh', 'sox.sh', path, min_length], stdin=p1.stdout)
+				p2.wait()
+				p1.kill()
+				in_text = subprocess.check_output (['sh', 'recognize_live.sh', path])
+			elif stage == 5:
+				min_length = '0.1'
+				path = '/home/pi/HTK-ASR-WILKiOWCE-ICAO/HTK-ASR-WILKiOWCE-cofnij/'
+				p1 = subprocess.Popen (['rec', '-c', '1', '-p'], stdout=subprocess.PIPE)
+				p2 = subprocess.Popen (['sh', 'sox.sh', path, min_length], stdin=p1.stdout)
+				p2.wait()
+				p1.kill()
+				in_text = subprocess.check_output (['sh', 'recognize_live.sh', path])
+			else:
+				min_length = '0.1'
+				path = '/home/pi/HTK-ASR-WILKiOWCE-ICAO/'
+				p1 = subprocess.Popen (['rec', '-c', '1', '-p'], stdout=subprocess.PIPE)
+				p2 = subprocess.Popen (['sh', 'sox.sh', path, min_length], stdin=p1.stdout)
+				p2.wait()
+				p1.kill()
+				in_text = subprocess.check_output (['sh', 'recognize_live.sh', path])
+ 				
+ 				
+				print "else"
+			
+			while True:
+				try:
+					print in_text
+					process_text(in_text)
+					
+					break
+	    				
+				
+
+				except KeyboardInterrupt:
+					print "EXCEPTION: Ctr + c"
+					break
+				
+		except KeyboardInterrupt:
+			print "MAIN EXCEPTION: Ctr + c"
+			break
+		
